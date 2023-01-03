@@ -8,9 +8,6 @@ on:
 jobs:
   frontend-setup:
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: ./frontend
     strategy:
       matrix:
         os: [macos-latest]
@@ -34,9 +31,6 @@ jobs:
     needs: frontend-setup
     name: run integration test on Android emulator
     runs-on: macos-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     strategy:
       matrix:
         device:
@@ -46,29 +40,28 @@ jobs:
       - uses: actions/setup-java@v1
         with:
           java-version: "12.x"
+      
+    # Cache Flutter Environment
+      - name: Cache Flutter
+        id: cache-flutter
+        uses: actions/cache@v3
+        with:
+          path: /Users/runner/hostedtoolcache/flutter
+          key: ${{ runner.os }}-flutter
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
 
       # Launch Tests and screenshots
       - name: run tests
         timeout-minutes: 30
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          working-directory: ./frontend
           api-level: 29
           profile: ${{ matrix.device }}
           target: google_apis
           script: | 
             ./scripts/run_tests.sh integration_test/tests -d "emulator-5554"
-      - uses: actions/upload-artifact@v1
-        with:
-          name: screenshots
-          path: frontend/screenshots
-
-      #Upload Artifacts
-      - uses: actions/upload-artifact@v1
-        if: always()
-        with:
-          name: backend_${{ github.job }}.log
-          path: backend/backend.log
           
   frontend-ios-integration-test:
     needs: frontend-setup
@@ -93,15 +86,18 @@ jobs:
           echo $UDID
           xcrun simctl boot "${UDID:?No Simulator with this name found}"
 
+      # Cache Flutter Environment
+      - name: Cache Flutter
+        id: cache-flutter
+        uses: actions/cache@v3
+        with:
+          path: /Users/runner/hostedtoolcache/flutter
+          key: ${{ runner.os }}-flutter
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
       # Launch tests
       - name: "Run Flutter Driver tests"
-        working-directory: ./frontend
         run: |
           ./scripts/run_tests.sh integration_test/tests
-
-      #Upload Artifacts
-      - uses: actions/upload-artifact@v1
-        if: always()
-        with:
-          name: backend_${{ github.job }}.log
-          path: backend/backend.log
